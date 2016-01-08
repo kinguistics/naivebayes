@@ -69,8 +69,12 @@ class NaiveBayes(object):
 
         p_list = p_by_category.items()
         p_list.sort(cmp=lambda x,y: cmp(x[1],y[1]), reverse=True)
-
+        
+        '''
+        ### from here down will return all equiprobable best categories
+        ### honestly I'm not sure what is gained from this
         best_score = p_list[0][1]
+        
         category_idx = 1
         while category_idx < len(p_list):
             if p_list[category_idx][1] != best_score:
@@ -78,6 +82,9 @@ class NaiveBayes(object):
             category_idx += 1
 
         return p_list[:category_idx]
+        '''
+        
+        return p_list[0][0]
 
     def soft_classify(self, document):
         if (self.p_categories is None) or (self.p_words_by_category is None):
@@ -184,3 +191,8 @@ def build_all_brown(subset=False):
         all_categories.add(category)
 
     return documents, categories
+
+if __name__ == '__main__':
+    docs, cats = build_all_brown(subset=True)
+    
+    nb = NaiveBayes(docs, cats)
