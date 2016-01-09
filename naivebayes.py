@@ -6,9 +6,9 @@ def logAdd(logX, logY):
     if logY > logX:
         logX, logY = logY, logX
 
-    if isnan(logY):
+    if isnan(logY) or isinf(logY):
         return logX
-
+    
     negDiff = logY - logX
     #print negDiff
     if negDiff < -20:
@@ -134,6 +134,19 @@ class NaiveBayes(object):
             c_categories[category] += 1
 
         return c_categories
+    
+    def softcount_categories(self, soft_classifications):
+        c_categories = {}
+        
+        for doc_softclass in soft_classifications:
+            for category in doc_softclass:
+                # add (logged) softcounts of categories
+                if category not in c_categories:
+                    c_categories[category] = log(0)
+                c_categories[category] = logAdd(c_categories[category],
+                                                doc_softclass[category])
+
+        return c_categories
 
     def count_words_by_category(self):
         c_words_by_category = {}
@@ -151,6 +164,27 @@ class NaiveBayes(object):
                     c_words_by_category[category][word] = 0
                 c_words_by_category[category][word] += 1
 
+        return c_words_by_category
+    
+    def softcount_words_by_category(self, soft_classifications):
+        c_words_by_category = {}
+        
+        for doc_idx in range(len(self.documents)):
+            document = self.documents[doc_idx]
+            category_softclass = soft_classifications[doc_idx]
+            
+            for category in category_softclass:
+                p_doc_category = category_softclass[category]
+            
+                if category not in c_words_by_category:
+                    c_words_by_category[category] = {}
+                
+                for word in document:
+                    if word not in c_words_by_category[category]:
+                        c_words_by_category[category][word] = log(0)
+                    c_words_by_category = logAdd(c_words_by_category[category][word],
+                                                 p_doc_category)
+        
         return c_words_by_category
 
     def smooth_word_counts_by_category(self,c_words_by_category):
