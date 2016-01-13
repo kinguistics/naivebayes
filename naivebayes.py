@@ -272,11 +272,14 @@ class NaiveBayes(object):
                 if predicted_category == argmax_dict(test_cat):
                     fold_accurate_classification_count += 1
 
-            fold_accuracy = float(fold_accurate_classification_count) / len(test_docs)
+            fold_accuracy = float(fold_accurate_classification_count) / len(test_docs)                
             accuracies.append(fold_accuracy)
             print "fold:",fold_number+1, "... accuracy:",fold_accuracy
+            if fold_accuracy < 0.5:
+                return train_docs, test_docs, train_cats, test_cats
 
-        return accuracies
+
+        #return accuracies
 
 
 class NaiveBayesEM(object):
@@ -299,6 +302,8 @@ class NaiveBayesEM(object):
         self.initializeEM()
 
         for iter_n in range(self.max_iterations):
+            done = False
+            
             try: prev_likelihood = self.likelihood[-1]
             except IndexError: prev_likelihood = None
 
@@ -426,7 +431,7 @@ def convert_categories_to_probs(catlist):
 
 if __name__ == '__main__':
     try:
-        docs, cats = build_all_brown(subset=False)
+        docs, cats = build_all_brown(subset=True)
     except:
         with open('brown_docs_cats.pickle') as f:
             docs, cats = pickle.load(f)
@@ -446,12 +451,12 @@ if __name__ == '__main__':
     
     #binary_docs = [list(set(d)) for d in docs]
 
-    nb2 = NaiveBayes(docs, catprobs)
-    ek_nb_accuracies = []
+    nb = NaiveBayes(docs, catprobs)
 
-    for crossval_iter in range(1):
-        accs = nb2.crossval()
-        ek_nb_accuracies += accs
+    for crossval_iter in range(10):
+        accs = nb.crossval()
+        if accs is not None:
+            break
 
     '''
     nbem = NaiveBayesEM(docs, 15, randomize=False)
