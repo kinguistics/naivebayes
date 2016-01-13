@@ -1,6 +1,6 @@
 import random
 from nltk.corpus import brown
-from numpy import log, exp, isnan, isinf
+from numpy import log, exp, isnan, isinf, ceil
 
 def logAdd(logX, logY):
     # make logX the max of the wo
@@ -39,6 +39,37 @@ def scale_log_dictionary(d):
 
     return scaled
 
+def argmax_dict(d):
+    # check to make sure there *is* a single highest value
+    if (len(d) > 1) and (len(set(d.values())) == 1):
+        return None
+
+    d_list = d.items()
+    d_list.sort(cmp=lambda x,y: cmp(x[1],y[1]), reverse=True)
+
+    return d_list[0][0]
+
+def build_crossval_indices(n,k):
+    indices = [int(ceil((float(n)/k)*i)) for i in range(k+1)]
+    return indices
+
+def get_crossval_split(l, indices, i):
+    test_start_idx = indices[i]
+    test_end_idx = indices[i+1]
+
+    train_l = l[:test_start_idx] + l[test_end_idx:]
+    test_l = l[test_start_idx:test_end_idx]
+
+    return train_l, test_l
+
+def shuffle_paired_lists(l1, l2):
+    zipped = zip(l1, l2)
+    random.shuffle(zipped)
+
+    unzipped1 = [v[0] for v in zipped]
+    unzipped2 = [v[1] for v in zipped]
+
+    return unzipped1, unzipped2
 
 class NaiveBayes(object):
     """
@@ -76,16 +107,13 @@ class NaiveBayes(object):
         self.p_categories = p_categories
         self.p_words_by_category = p_words_by_category
 
-        self.likelihood = log(1)
-
     def classify(self, document):
         """ returns list of most probable classes """
         p_by_category = self.soft_classify(document)
 
-        p_list = p_by_category.items()
-        p_list.sort(cmp=lambda x,y: cmp(x[1],y[1]), reverse=True)
+        best_category = argmax_dict(p_by_category)
 
-        return p_list[0][0]
+        return best_category
 
     def soft_classify(self, document):
         if (self.p_words_by_category is None):
@@ -108,13 +136,18 @@ class NaiveBayes(object):
 
         return p_by_category
 
-    def train(self):
-        # count dicts
-        c_categories = self.softcount_categories()
-        c_words_by_category = self.softcount_words_by_category()
+    def train(self, documents=None, categories=None):
+        if documents is None:
+            documents = self.documents
+        if categories is None:
+            categories = self.doc_categories
 
+        # count dicts
+        c_categories = self.softcount_categories(categories)
+        c_words_by_category = self.softcount_words_by_category(documents, categories)
         # add-one smoothing
-        #smoothed_word_counts = self.smooth_word_counts_by_category(c_words_by_category)
+        c_words_by_category = self.smooth_word_counts_by_category(c_words_by_category)
+
         # scale the count dicts to get probabilities
         p_categories = scale_log_dictionary(c_categories)
 
@@ -125,18 +158,6 @@ class NaiveBayes(object):
         # set the object variables
         self.p_categories = p_categories
         self.p_words_by_category = p_words_by_category
-
-
-    def count_categories(self):
-        c_categories = {}
-
-        for category in self.categories:
-            # keep counts of categories
-            if category not in c_categories:
-                c_categories[category] = 0
-            c_categories[category] += 1
-
-        return c_categories
 
     def softcount_categories(self, soft_classifications=None):
         if soft_classifications is None:
@@ -154,32 +175,18 @@ class NaiveBayes(object):
 
         return c_categories
 
-    def count_words_by_category(self):
-        c_words_by_category = {}
-
-        # count words by category
-        for doc_idx in range(len(self.documents)):
-            document = self.documents[doc_idx]
-            category = self.categories[doc_idx]
-
-            if category not in c_words_by_category:
-                c_words_by_category[category] = {}
-
-            for word in document:
-                if word not in c_words_by_category[category]:
-                    c_words_by_category[category][word] = 0
-                c_words_by_category[category][word] += 1
-
-        return c_words_by_category
-
-    def softcount_words_by_category(self, soft_classifications=None):
+    def softcount_words_by_category(self, documents=None, soft_classifications=None):
+        if documents is None:
+            documents = self.documents
         if soft_classifications is None:
             soft_classifications = self.doc_categories
 
+        assert len(documents) == len(soft_classifications)
+
         c_words_by_category = {}
 
-        for doc_idx in range(len(self.documents)):
-            document = self.documents[doc_idx]
+        for doc_idx in range(len(documents)):
+            document = documents[doc_idx]
             category_softclass = soft_classifications[doc_idx]
 
             for category in category_softclass:
@@ -189,6 +196,7 @@ class NaiveBayes(object):
                     c_words_by_category[category] = {}
 
                 for word in document:
+                    #log_wordcount = document[word]
                     if word not in c_words_by_category[category]:
                         c_words_by_category[category][word] = log(0)
                     c_words_by_category[category][word] = logAdd(c_words_by_category[category][word],
@@ -220,6 +228,33 @@ class NaiveBayes(object):
                 smoothed_words_by_category[category][word] = true_count + 1
 
         return smoothed_words_by_category
+
+    def crossval(self, nfolds=10):
+        fold_indices = build_crossval_indices(len(self.documents), nfolds)
+        docs, cats = shuffle_paired_lists(self.documents, self.doc_categories)
+
+        for fold_number in range(nfolds):
+            train_docs, test_docs = get_crossval_split(docs, fold_indices, fold_number)
+            train_cats, test_cats = get_crossval_split(cats, fold_indices, fold_number)
+
+            self.train(documents=train_docs, categories=train_cats)
+
+            fold_accurate_classification_count = 0
+            for test_idx in range(len(test_docs)):
+                test_doc = test_docs[test_idx]
+                test_cat = test_cats[test_idx]
+
+                predicted_category = self.classify(test_doc)
+
+                doc_number = self.documents.index(test_doc)
+                print "document #%s should be %s; classified as %s" % (doc_number, argmax_dict(test_cat), predicted_category)
+                if predicted_category == argmax_dict(test_cat):
+                    fold_accurate_classification_count += 1
+
+            fold_accuracy = float(fold_accurate_classification_count) / len(test_docs)
+            print "fold:",fold_number+1, "... accuracy:",fold_accuracy
+
+
 
 class NaiveBayesEM(object):
     def __init__(self, documents, n_categories, max_iterations=10):
@@ -320,7 +355,11 @@ def build_all_brown(subset=False):
 
         all_categories.add(category)
 
-    return documents, categories
+    if subset:
+        # exclude the final item, since it's the sole member of the third group
+        return documents[:-1], categories[:-1]
+    else:
+        return documents, categories
 
 def convert_categories_to_probs(catlist):
     problist = []
@@ -333,10 +372,11 @@ def convert_categories_to_probs(catlist):
 
 if __name__ == '__main__':
     docs, cats = build_all_brown(subset=True)
-    binary_docs = [list(set(d)) for d in docs]
+    catprobs = convert_categories_to_probs(cats)
+    #binary_docs = [list(set(d)) for d in docs]
 
-    nb = NaiveBayes(docs, convert_categories_to_probs(cats))
-    nb.train()
+    nb = NaiveBayes(docs, catprobs)
+    nb.crossval()
 
     '''
     nbem = NaiveBayesEM(docs[:-1], 2)
