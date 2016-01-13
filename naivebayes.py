@@ -280,7 +280,7 @@ class NaiveBayes(object):
 
 
 class NaiveBayesEM(object):
-    def __init__(self, documents, n_categories, randomize=False, max_iterations=10):
+    def __init__(self, documents, n_categories, randomize=False, max_iterations=20):
         self.documents = documents
         self.vocab = self.generate_vocab()
 
@@ -313,17 +313,12 @@ class NaiveBayesEM(object):
             ### CHECK LIKELIHOOD CHANGE
             this_likelihood = nb.calculate_likelihood()
             self.likelihood.append(this_likelihood)
-            if this_likelihood == prev_likelihood:
-                last_predictions = {}
-                for doc in self.documents:
-                    predicted = self.all_nb[-1].classify(doc)
-                    if predicted not in last_predictions:
-                        last_predictions[predicted] = 0
-                    last_predictions[predicted] += 1
-                
-                break
+            if this_likelihood == prev_likelihood:                
+                done = True
 
             print iter_n, this_likelihood, nb.count_classifications()
+            if done:
+                break
 
     def initializeEM(self):
         p_categories = {}
@@ -377,6 +372,24 @@ class NaiveBayesEM(object):
                 vocab[word] += 1
                 
         return vocab
+    
+    def calculate_category_words(self, n=10):
+        nb = self.all_nb[-1]
+        predictions = nb.count_classifications()
+        
+        baseline = self.vocab
+        
+        good_cats = {}
+        
+        for c in predictions:
+            c_worddict = nb.p_words_by_category[c]
+            diff_from_baseline = [(w, c_worddict[w] - baseline[w]) for w in baseline]
+            diff_from_baseline.sort(cmp=lambda x,y: cmp(x[1],y[1]))
+            
+            good_cats[c] = diff_from_baseline[:n] + diff_from_baseline[-n:]
+        
+        return good_cats
+            
 
 def build_all_brown(subset=False):
     documents = []
@@ -443,5 +456,5 @@ if __name__ == '__main__':
     '''
     nbem = NaiveBayesEM(docs, 15, randomize=False)
     nbem.runEM()
-    
+    print nbem.calculate_category_words()
     
