@@ -1,4 +1,5 @@
 import random
+import pickle
 from nltk.corpus import brown
 from numpy import log, exp, isnan, isinf, ceil, sum
 
@@ -411,7 +412,11 @@ def convert_categories_to_probs(catlist):
     return problist
 
 if __name__ == '__main__':
-    docs, cats = build_all_brown(subset=False)
+    try:
+        docs, cats = build_all_brown(subset=False)
+    except:
+        with open('brown_docs_cats.pickle') as f:
+            docs, cats = pickle.load(f)
     catprobs = convert_categories_to_probs(cats)
     
     '''
