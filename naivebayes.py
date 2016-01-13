@@ -230,13 +230,15 @@ class NaiveBayes(object):
                 try: true_count = c_words_by_category[category][word]
                 except KeyError: true_count = 0
 
-                smoothed_words_by_category[category][word] = true_count + 1
+                smoothed_words_by_category[category][word] = logAdd(true_count, log(1))
 
         return smoothed_words_by_category
 
     def crossval(self, nfolds=10):
         fold_indices = build_crossval_indices(len(self.documents), nfolds)
         docs, cats = shuffle_paired_lists(self.documents, self.doc_categories)
+
+        accuracies = []
 
         for fold_number in range(nfolds):
             train_docs, test_docs = get_crossval_split(docs, fold_indices, fold_number)
@@ -252,13 +254,15 @@ class NaiveBayes(object):
                 predicted_category = self.classify(test_doc)
 
                 doc_number = self.documents.index(test_doc)
-                print "document #%s should be %s; classified as %s" % (doc_number, argmax_dict(test_cat), predicted_category)
+                #print "document #%s should be %s; classified as %s" % (doc_number, argmax_dict(test_cat), predicted_category)
                 if predicted_category == argmax_dict(test_cat):
                     fold_accurate_classification_count += 1
 
             fold_accuracy = float(fold_accurate_classification_count) / len(test_docs)
+            accuracies.append(fold_accuracy)
             print "fold:",fold_number+1, "... accuracy:",fold_accuracy
 
+        return accuracies
 
 
 class NaiveBayesEM(object):
@@ -296,11 +300,14 @@ class NaiveBayesEM(object):
 
             print iter_n, this_likelihood
 
-    def initializeEM(self):
+    def initializeEM(self, random=True):
         p_categories = {}
         for c in self.categories:
-            p_categories[c] = random.random()
-            #p_categories[c] = float(1) / len(self.categories)
+            if random:
+                p_categories[c] = random.random()
+            else:
+                # make it mostly equal
+                p_categories[c] = float(1) / len(self.categories)
         p_categories = scale_dictionary(p_categories)
 
         p_words_by_category = {}
@@ -376,9 +383,10 @@ def convert_categories_to_probs(catlist):
     return problist
 
 if __name__ == '__main__':
-    docs, cats = build_all_brown(subset=True)
+    docs, cats = build_all_brown(subset=False)
     catprobs = convert_categories_to_probs(cats)
     
+    '''
     # manual folding
     cb_start = cats.index('cb')
     five_percent_idx = len(docs)/20
@@ -392,10 +400,14 @@ if __name__ == '__main__':
     
     #binary_docs = [list(set(d)) for d in docs]
 
-    nb = NaiveBayes(docs, catprobs)
-    nb.crossval()
+    nb2 = NaiveBayes(docs, catprobs)
+    ek_nb_accuracies = []
+
+    for crossval_iter in range(10):
+        accs = nb.crossval()
+        ek_nb_accuracies += accs
 
     '''
-    nbem = NaiveBayesEM(docs[:-1], 2)
+    nbem = NaiveBayesEM(docs, 15)
     nbem.runEM()
-    '''
+    
