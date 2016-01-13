@@ -1,6 +1,6 @@
 import random
 from nltk.corpus import brown
-from numpy import log, exp, isnan, isinf, ceil
+from numpy import log, exp, isnan, isinf, ceil, sum
 
 def logAdd(logX, logY):
     # make logX the max of the wo
@@ -95,6 +95,7 @@ class NaiveBayes(object):
         self.documents = documents
 
         self.doc_categories = doc_categories
+        
         self.categories = set()
         if self.doc_categories is not None:
             for doc_cat in doc_categories:
@@ -103,6 +104,8 @@ class NaiveBayes(object):
             self.categories = p_categories.keys()
         self.categories = list(self.categories)
         self.categories.sort()
+        
+        self.vocab = set(sum(documents))
 
         self.p_categories = p_categories
         self.p_words_by_category = p_words_by_category
@@ -213,9 +216,11 @@ class NaiveBayes(object):
 
     def smooth_word_counts_by_category(self,c_words_by_category):
         """ smoothing fucks up the classification for some reason """
-        lexicon = set()
+        lexicon = self.vocab
+        '''
         for category in c_words_by_category:
             lexicon = lexicon.union(set(c_words_by_category[category]))
+        '''
 
         smoothed_words_by_category = {}
 
@@ -373,6 +378,18 @@ def convert_categories_to_probs(catlist):
 if __name__ == '__main__':
     docs, cats = build_all_brown(subset=True)
     catprobs = convert_categories_to_probs(cats)
+    
+    # manual folding
+    cb_start = cats.index('cb')
+    five_percent_idx = len(docs)/20
+    test_start = cb_start - five_percent_idx
+    test_end = cb_start+(len(docs)/20)
+
+    docs_test = docs[test_start:test_end]
+    cats_test = catprobs[test_start:test_end]
+    docs_train = docs[:test_start] + docs[test_end:]
+    cats_train = catprobs[:test_start] + catprobs[test_end:]
+    
     #binary_docs = [list(set(d)) for d in docs]
 
     nb = NaiveBayes(docs, catprobs)
