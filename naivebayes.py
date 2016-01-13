@@ -138,6 +138,16 @@ class NaiveBayes(object):
         #p_by_category = scale_log_dictionary(p_by_category)
 
         return p_by_category
+    
+    def count_classifications(self):
+        classes = {}
+        for doc in self.documents:
+            predicted = self.classify(doc)
+            if predicted not in classes:
+                classes[predicted] = 0
+            classes[predicted] += 1
+        return classes
+            
 
     def train(self, documents=None, categories=None):
         if documents is None:
@@ -165,10 +175,13 @@ class NaiveBayes(object):
     def softcount_categories(self, soft_classifications=None):
         if soft_classifications is None:
             soft_classifications = self.doc_categories
+        
+        soft_classifications = soft_classifications
 
         c_categories = {}
 
         for doc_softclass in soft_classifications:
+            doc_softclass = scale_log_dictionary(doc_softclass)
             for category in doc_softclass:
                 # add (logged) softcounts of categories
                 if category not in c_categories:
@@ -190,7 +203,7 @@ class NaiveBayes(object):
 
         for doc_idx in range(len(documents)):
             document = documents[doc_idx]
-            category_softclass = soft_classifications[doc_idx]
+            category_softclass = scale_log_dictionary(soft_classifications[doc_idx])
 
             for category in category_softclass:
                 p_doc_category = category_softclass[category]
@@ -266,7 +279,7 @@ class NaiveBayes(object):
 
 
 class NaiveBayesEM(object):
-    def __init__(self, documents, n_categories, max_iterations=10):
+    def __init__(self, documents, n_categories, randomize=False, max_iterations=10):
         self.documents = documents
         self.vocab = self.generate_vocab()
 
@@ -274,6 +287,8 @@ class NaiveBayesEM(object):
 
         self.p_categories = []
         self.p_words_by_category = []
+
+        self.randomize = randomize
 
         self.max_iterations = max_iterations
         self.likelihood = []
@@ -297,25 +312,39 @@ class NaiveBayesEM(object):
             ### CHECK LIKELIHOOD CHANGE
             this_likelihood = nb.calculate_likelihood()
             self.likelihood.append(this_likelihood)
+            if this_likelihood == prev_likelihood:
+                last_predictions = {}
+                for doc in self.documents:
+                    predicted = self.all_nb[-1].classify(doc)
+                    if predicted not in last_predictions:
+                        last_predictions[predicted] = 0
+                    last_predictions[predicted] += 1
+                
+                break
 
-            print iter_n, this_likelihood
+            print iter_n, this_likelihood, nb.count_classifications()
 
-    def initializeEM(self, random=True):
+    def initializeEM(self):
         p_categories = {}
         for c in self.categories:
-            if random:
-                p_categories[c] = random.random()
+            randfloat = random.random()
+            if self.randomize:
+                p_categories[c] = randfloat
             else:
                 # make it mostly equal
-                p_categories[c] = float(1) / len(self.categories)
+                p_categories[c] = float(1+(0.05*randfloat)) / len(self.categories)
         p_categories = scale_dictionary(p_categories)
 
         p_words_by_category = {}
         for c in self.categories:
             cwords = {}
             for w in self.vocab:
-                cwords[w] = random.random()
-                #cwords[w] = float(1) / len(self.vocab)
+                randfloat = random.random()
+                if self.randomize:
+                    cwords[w] = random.random()
+                else:
+                    wordcount = self.vocab[w]
+                    cwords[w] = float(wordcount+(0.05*randfloat)) / len(self.vocab)
             p_words_by_category[c] = scale_dictionary(cwords)
 
         self.p_categories.append(p_categories)
@@ -338,15 +367,14 @@ class NaiveBayesEM(object):
         self.p_words_by_category.append(nb.p_words_by_category)
 
     def generate_vocab(self):
-        vocab = set()
+        vocab = {}
 
         for doc in self.documents:
-            docset = set(doc)
-            vocab = vocab.union(docset)
-
-        vocab = list(vocab)
-        vocab.sort()
-
+            for word in doc:
+                if word not in vocab:
+                    vocab[word] = 0
+                vocab[word] += 1
+                
         return vocab
 
 def build_all_brown(subset=False):
@@ -403,11 +431,12 @@ if __name__ == '__main__':
     nb2 = NaiveBayes(docs, catprobs)
     ek_nb_accuracies = []
 
-    for crossval_iter in range(10):
-        accs = nb.crossval()
+    for crossval_iter in range(1):
+        accs = nb2.crossval()
         ek_nb_accuracies += accs
 
     '''
-    nbem = NaiveBayesEM(docs, 15)
+    nbem = NaiveBayesEM(docs, 15, randomize=False)
     nbem.runEM()
+    
     
