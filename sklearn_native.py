@@ -8,7 +8,7 @@ from nltk.corpus import brown
 from numpy import log, exp, isnan, isinf, ceil, sum, resize
 from sklearn.utils.extmath import logsumexp
 
-NRUNS = 50
+NRUNS = 100
 
 def count_docs_per_class(nb):
     return nb.predict_proba(doc_vec).sum(axis=0)
