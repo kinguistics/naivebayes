@@ -8,7 +8,7 @@ from nltk.corpus import brown
 from numpy import log, exp, isnan, isinf, ceil, sum, resize
 from sklearn.utils.extmath import logsumexp
 
-NRUNS = 100
+NRUNS = 500
 
 def count_docs_per_class(nb):
     return nb.predict_proba(doc_vec).sum(axis=0)
@@ -174,6 +174,8 @@ if __name__ == '__main__':
         nbem.runEM()
         
         nb = nbem.last_nb
+        doc_classes = [v for v in count_docs_per_class(nb) if v>0]
+        priors = [v for v in exp(nb.class_log_prior_) if v > 0]
         live_classes = count_live_classes(nb)
         likelihood = nbem.likelihood[-1]
         iterations = len(nbem.likelihood) - 1
@@ -181,4 +183,4 @@ if __name__ == '__main__':
         with open('all_brown_em_tests/run_%s.pickle' % run_number,'w') as fout:
             pickle.dump(nb, fout)
         
-        print "%s,%s,%s,%s" % (run_number, iterations, live_classes, likelihood)
+        print "%s,%s,%s,%s,%s,%s" % (run_number, iterations, live_classes, likelihood,doc_classes,priors)
