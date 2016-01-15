@@ -167,6 +167,7 @@ if __name__ == '__main__':
     doc_vectorizer.fit(skdocs)
     doc_vec = doc_vectorizer.transform(skdocs)
 
+    print "run.n, n.iterations,n.classes,likelihood"
     # simulate the likelihood landscape
     for run_number in range(NRUNS):
         nbem = NaiveBayesEM(doc_vec, 15)
@@ -175,5 +176,9 @@ if __name__ == '__main__':
         nb = nbem.last_nb
         live_classes = count_live_classes(nb)
         likelihood = nbem.likelihood[-1]
+        iterations = len(nbem.likelihood) - 1
         
-        print "run %s: %s,%s" % (run_number, live_classes, likelihood)
+        with open('all_brown_em_tests/run_%s.pickle' % run_number,'w') as fout:
+            pickle.dump(nb, fout)
+        
+        print "%s,%s,%s,%s" % (run_number, iterations, live_classes, likelihood)
