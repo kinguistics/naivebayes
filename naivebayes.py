@@ -106,7 +106,7 @@ class NaiveBayes(object):
         self.categories = list(self.categories)
         self.categories.sort()
         
-        self.vocab = set(sum(documents))
+        self.vocab = set(sum([d.keys() for d in documents]))
 
         self.p_categories = p_categories
         self.p_words_by_category = p_words_by_category
@@ -132,7 +132,7 @@ class NaiveBayes(object):
                 try: p_word_by_category = self.p_words_by_category[category][word]
                 except KeyError:
                     p_word_by_category = log(0)
-                p_by_category[category] += p_word_by_category
+                p_by_category[category] += p_word_by_category * document[word]
 
         #scaled_p_by_category = scale_log_dictionary(p_by_category)
 
@@ -213,11 +213,15 @@ class NaiveBayes(object):
                     c_words_by_category[category] = {}
 
                 for word in document:
+                    #c_words_by_category[category][word] = document[word] * p_doc_category
+                    for wcount in range(document[word]):
                     #log_wordcount = document[word]
-                    if word not in c_words_by_category[category]:
-                        c_words_by_category[category][word] = log(0)
-                    c_words_by_category[category][word] = logAdd(c_words_by_category[category][word],
-                                                          p_doc_category)
+                        
+                        if word not in c_words_by_category[category]:
+                            c_words_by_category[category][word] = log(0)
+                        c_words_by_category[category][word] = logAdd(c_words_by_category[category][word],
+                                                            p_doc_category)
+                        
 
         return c_words_by_category
 
@@ -267,7 +271,6 @@ class NaiveBayes(object):
 
                 predicted_category = self.classify(test_doc)
 
-                doc_number = self.documents.index(test_doc)
                 #print "document #%s should be %s; classified as %s" % (doc_number, argmax_dict(test_cat), predicted_category)
                 if predicted_category == argmax_dict(test_cat):
                     fold_accurate_classification_count += 1
@@ -372,9 +375,7 @@ class NaiveBayesEM(object):
 
         for doc in self.documents:
             for word in doc:
-                if word not in vocab:
-                    vocab[word] = 0
-                vocab[word] += 1
+                vocab[word] = doc[word]
                 
         return vocab
     
@@ -429,14 +430,23 @@ def convert_categories_to_probs(catlist):
 
     return problist
 
+def doc2dict(doc):
+    d = {}
+    for word in doc:
+        if word not in d:
+            d[word] = 0
+        d[word] += 1
+    return d
+
 if __name__ == '__main__':
     try:
         docs, cats = build_all_brown(subset=True)
     except:
         with open('brown_docs_cats.pickle') as f:
             docs, cats = pickle.load(f)
+    docs = [doc2dict(doc) for doc in docs]
     catprobs = convert_categories_to_probs(cats)
-    
+
     '''
     # manual folding
     cb_start = cats.index('cb')
@@ -450,16 +460,13 @@ if __name__ == '__main__':
     cats_train = catprobs[:test_start] + catprobs[test_end:]
     
     #binary_docs = [list(set(d)) for d in docs]
-
+    '''
     nb = NaiveBayes(docs, catprobs)
 
-    for crossval_iter in range(10):
-        accs = nb.crossval()
-        if accs is not None:
-            break
+    accs = nb.crossval()
 
     '''
     nbem = NaiveBayesEM(docs, 15, randomize=False)
     nbem.runEM()
     print nbem.calculate_category_words()
-    
+    '''

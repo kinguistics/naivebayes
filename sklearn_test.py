@@ -54,32 +54,35 @@ def shuffle_paired_lists(l1, l2):
 if __name__ == '__main__':
     nfolds = 10
     
-    docs, cats = build_all_brown(True)
-    docs = [' '.join(d) for d in docs]
+    skdocs, skcats = build_all_brown(True)
+    skdocs = [' '.join(d) for d in skdocs]
     
-    doc_vectorizer = CountVectorizer(docs)
-    doc_vectorizer.fit(docs)
+    doc_vectorizer = CountVectorizer(skdocs)
+    doc_vectorizer.fit(skdocs)
     
-    nb = MultinomialNB()
+    sknb = MultinomialNB()
+    doc_vec = doc_vectorizer.transform(skdocs)
+    sknb.fit(doc_vec, skcats)
     
-    fold_indices = build_crossval_indices(len(docs), nfolds)
-    docs, cats = shuffle_paired_lists(docs, cats)
+    fold_indices = build_crossval_indices(len(skdocs), nfolds)
+    skdocs, skcats = shuffle_paired_lists(skdocs, skcats)
     
+    '''
     sk_nb_accuracies = []
     for crossval_iter in range(10):
         for fold_number in range(nfolds):
-            train_docs, test_docs = get_crossval_split(docs, fold_indices, fold_number)
+            train_docs, test_docs = get_crossval_split(skdocs, fold_indices, fold_number)
             train_vector = doc_vectorizer.transform(train_docs)
             test_vector = doc_vectorizer.transform(test_docs)
             
-            train_cats, test_cats = get_crossval_split(cats, fold_indices, fold_number)
+            train_cats, test_cats = get_crossval_split(skcats, fold_indices, fold_number)
             
             
-            nb.fit(train_vector, train_cats)
-            acc = nb.score(test_vector, test_cats)
+            sknb.fit(train_vector, train_cats)
+            acc = sknb.score(test_vector, test_cats)
             print fold_number, acc
             sk_nb_accuracies.append(acc)
-            '''
+            
             fold_accurate_classification_count = 0
             for test_idx in range(len(test_docs)):
                 test_doc = test_docs[test_idx]
@@ -94,4 +97,4 @@ if __name__ == '__main__':
         
             fold_accuracy = float(fold_accurate_classification_count) / len(test_docs)
             print "fold:",fold_number+1, "... accuracy:",fold_accuracy
-            '''
+    '''
