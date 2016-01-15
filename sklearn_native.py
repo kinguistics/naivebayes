@@ -157,10 +157,10 @@ def generate_normed_rand_log_prob(vecshape, count_vec=None, max_alpha=10):
 
 if __name__ == '__main__':
     try:
-        docs, cats = build_all_brown(subset=True)
+        skdocs, skcats = build_all_brown(subset=True)
     except:
         with open('brown_docs_cats.pickle') as f:
-            docs, cats = pickle.load(f)
+            skdocs, skcats = pickle.load(f)
     skdocs = [' '.join(d) for d in skdocs]
     
     doc_vectorizer = CountVectorizer(skdocs)
