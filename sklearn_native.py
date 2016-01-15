@@ -170,7 +170,7 @@ if __name__ == '__main__':
     print "run.n, n.iterations,n.classes,likelihood"
     # simulate the likelihood landscape
     for run_number in range(NRUNS):
-        nbem = NaiveBayesEM(doc_vec, 15)
+        nbem = NaiveBayesEM(doc_vec, 15, max_iterations=50)
         nbem.runEM()
         
         nb = nbem.last_nb
