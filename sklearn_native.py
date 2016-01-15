@@ -1,4 +1,5 @@
 import random
+import pickle
 import numpy as np
 
 from sklearn.naive_bayes import MultinomialNB
@@ -155,7 +156,11 @@ def generate_normed_rand_log_prob(vecshape, count_vec=None, max_alpha=10):
     return normed_rand_log_prob
 
 if __name__ == '__main__':
-    skdocs, skcats = build_all_brown(False)
+    try:
+        docs, cats = build_all_brown(subset=True)
+    except:
+        with open('brown_docs_cats.pickle') as f:
+            docs, cats = pickle.load(f)
     skdocs = [' '.join(d) for d in skdocs]
     
     doc_vectorizer = CountVectorizer(skdocs)
