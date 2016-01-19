@@ -19,4 +19,4 @@
 ## the "meat" of the script
 
 #just print the name of this machine
-python sklearn_native.py $*
+python brown_testing.py $*
