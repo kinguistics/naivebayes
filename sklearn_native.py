@@ -157,7 +157,7 @@ def generate_normed_rand_log_prob(vecshape, count_vec=None, max_alpha=10):
 
 if __name__ == '__main__':
     try:
-        skdocs, skcats = build_all_brown(subset=True)
+        skdocs, skcats = build_all_brown(subset=False)
     except:
         with open('brown_docs_cats.pickle') as f:
             skdocs, skcats = pickle.load(f)
