@@ -17,7 +17,7 @@ def build_all_brown(subset_size=None):
             if subset_size:
                 if len(all_categories) > subset_size:
                     break
-            category = fileid[:2]
+            category = brown.categories(fileid)
             words = [x.lower() for x in brown.words(fileid)]
 
             documents.append(words)
@@ -25,7 +25,7 @@ def build_all_brown(subset_size=None):
 
             all_categories.add(category)
 
-        if subset_size:
+        if subset_size != len(brown.categories()):
             # exclude the final item, since it's the sole member of the next group
             documents = documents[:-1]
             categories = categories[:-1]
@@ -55,7 +55,7 @@ def build_all_brown(subset_size=None):
 if __name__ == "__main__":
     NRUNS = 25
 
-    docs, cats = build_all_brown(subset=False)
+    docs, cats = build_all_brown(2)
     vectorizer = CountVectorizer()
     docs = vectorizer.fit_transform(docs)
 

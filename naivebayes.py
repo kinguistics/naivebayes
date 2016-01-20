@@ -1,13 +1,14 @@
 import random
 import csv
 import numpy as np
-from numpy import ceil, floor, histogram2d, sum, array
+from numpy import ceil, floor, histogram2d, sum, array, log
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import LabelEncoder
 from brown_testing import build_all_brown
 
-### functions for cross-validation of MultinomialNB
+### MODEL EVALUATION
+# functions for cross-validation of MultinomialNB
 def cross_validate(docs, cats, nfolds=10, **kwargs):
     nsamples = len(cats)
     cats_types = list(set(cats))
@@ -37,14 +38,13 @@ def cross_validate(docs, cats, nfolds=10, **kwargs):
 
     return scores
 
-
 def build_confusion_matrix(nb, test_docs, test_cats):
-    ''' THIS IS BROKEN IN A WAY I CAN'T FIGURE OUT 
-        
+    ''' THIS IS BROKEN IN A WAY I CAN'T FIGURE OUT
+
         should get confusion matrix m such that
         sum(m.diagonal()) / sum(m)
         == nb.score(test_docs, test_cats)
-        
+
         but for some reason these two are not always equal'''
     class_size = len(nb.classes_)
     predicted = nb.predict(test_docs)
@@ -53,27 +53,56 @@ def build_confusion_matrix(nb, test_docs, test_cats):
 
     return m
 
+### MODEL INTERPRETATION
+# functions for odds-ratio of fitted model
+def find_n_most_extreme_odds_ratios(nb, word_log_prob, n=10, numerator_row=0):
+    odds_ratio = get_odds_ratio(nb, word_log_prob)
 
-def build_crossval_indices(n,k):
-    indices = [int(ceil((float(n)/k)*i)) for i in range(k+1)]
-    return indices
+    n_most_extreme = {}
+
+    nclasses = len(nb.classes_)
+    for class_idx in range(nclasses):
+        class_odds = odds_ratio[class_idx]
+        odds_with_indices = list(enumerate(class_odds))
+        odds_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
+
+        n_highest_indices = [o[0] for o in odds_with_indices[-n:]]
+        n_lowest_indices = [o[0] for o in odds_with_indices[:n]]
+
+        n_most_extreme[class_idx] = (n_highest_indices, n_lowest_indices)
+
+    return n_most_extreme
 
 
-def get_crossval_split(l, indices, i):
-    test_start_idx = indices[i]
-    test_end_idx = indices[i+1]
+def get_odds_ratio(nb, word_log_probs):
+    nclasses = len(nb.classes_)
+    overall_log_prob_matrix = word_log_probs.repeat(nclasses,axis=0)
 
-    train_l = l[:test_start_idx] + l[test_end_idx:]
-    test_l = l[test_start_idx:test_end_idx]
+    return nb.feature_log_prob_ - overall_log_prob_matrix
 
-    return train_l, test_l
+def find_n_most_extreme_fratios(nb, n=10, numerator_row=0):
+    fratio = get_fratio(nb, numerator_row)
+
+    class_odds = fratio
+    odds_with_indices = list(enumerate(class_odds))
+    odds_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
+
+    n_highest_indices = [o[0] for o in odds_with_indices[-n:]]
+    n_lowest_indices = [o[0] for o in odds_with_indices[:n]]
+
+    return n_highest_indices, n_lowest_indices
 
 
-def shuffle_paired_lists(l1, l2):
-    zipped = zip(l1, l2)
-    random.shuffle(zipped)
+def get_fratio(nb, numerator_row=0):
+    nclasses = len(nb.classes_)
+    denominator_row = [i for i in range(nclasses) if i!=numerator_row][0]
 
-    unzipped1 = [v[0] for v in zipped]
-    unzipped2 = [v[1] for v in zipped]
+    return nb.feature_log_prob_[numerator_row] - nb.feature_log_prob_[denominator_row]
 
-    return unzipped1, unzipped2
+def construct_word_log_prob(docs):
+    docs_count = array(docs.sum(axis=0))
+    docs_total = np.ones(docs_count.shape) * docs.sum()
+
+    docs_log_prob = log(docs_count) - log(docs_total)
+
+    return docs_log_prob
