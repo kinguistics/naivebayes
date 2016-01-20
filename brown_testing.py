@@ -1,6 +1,7 @@
 import pickle
 from nltk.corpus import brown
 from sklearn.feature_extraction.text import CountVectorizer
+from naivebayes import *
 from nbem import NaiveBayesEM, count_docs_per_class, count_live_classes
 from numpy import log, exp
 

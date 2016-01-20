@@ -54,6 +54,17 @@ def build_confusion_matrix(nb, test_docs, test_cats):
     return m
 
 ### MODEL INTERPRETATION
+def make_reverse_vocabulary(vectorizer):
+    revvoc = {}
+        
+    vocab = vectorizer.vocabulary_
+    for w in vocab:
+        i = vocab[w]
+        
+        revvoc[i] = w
+    
+    return revvoc
+
 # functions for odds-ratio of fitted model
 def find_n_most_extreme_odds_ratios(nb, word_log_prob, n=10, numerator_row=0):
     odds_ratio = get_odds_ratio(nb, word_log_prob)
