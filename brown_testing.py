@@ -56,7 +56,6 @@ if __name__ == "__main__":
     NRUNS = 25
 
     docs, cats = build_all_brown(subset=False)
-    docs = [' '.join(d) for d in docs]
     vectorizer = CountVectorizer()
     docs = vectorizer.fit_transform(docs)
 

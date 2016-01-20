@@ -39,45 +39,19 @@ def cross_validate(docs, cats, nfolds=10, **kwargs):
 
 
 def build_confusion_matrix(nb, test_docs, test_cats):
-    ''' THIS IS BROKEN IN A WAY I HAVEN'T FIGURED OUT '''
+    ''' THIS IS BROKEN IN A WAY I CAN'T FIGURE OUT 
+        
+        should get confusion matrix m such that
+        sum(m.diagonal()) / sum(m)
+        == nb.score(test_docs, test_cats)
+        
+        but for some reason these two are not always equal'''
     class_size = len(nb.classes_)
     predicted = nb.predict(test_docs)
     #return test_cats,predicted,class_size
     m, xe, ye = histogram2d(test_cats, predicted, bins=((class_size,class_size)))
 
     return m
-
-
-header = ['n.cats','run.num','fold.num','score']
-with open('crossval_tests.csv','w') as fout:
-    fwriter = csv.writer(fout)
-    fwriter.writerow(header)
-
-    for cat_size in range(2,16):
-
-        print "testing with %s brown categories" % cat_size
-
-        docs, cats = build_all_brown(cat_size)
-
-        vectorizer = CountVectorizer()
-        docs = vectorizer.fit_transform(docs)
-
-        enc = LabelEncoder()
-        cats = enc.fit_transform(cats)
-
-        all_scores = []
-
-        for testn in range(100):
-            scores = cross_validate(docs, cats)
-
-            for score_idx in range(len(scores)):
-                score = scores[score_idx]
-                rowout = [cat_size, testn, score_idx, score]
-                fwriter.writerow(rowout)
-
-#nb, test_docs, test_cats = cross_validate(docs, cats)
-
-
 
 
 def build_crossval_indices(n,k):
