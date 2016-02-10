@@ -18,7 +18,7 @@ def build_all_brown(subset_size=None):
             if subset_size:
                 if len(all_categories) > subset_size:
                     break
-            category = brown.categories(fileid)
+            category = brown.categories(fileid)[0]
             words = [x.lower() for x in brown.words(fileid)]
 
             documents.append(words)

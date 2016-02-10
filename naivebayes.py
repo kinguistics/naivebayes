@@ -6,6 +6,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import LabelEncoder
 from brown_testing import build_all_brown
+import functools
 
 ### MODEL EVALUATION
 # functions for cross-validation of MultinomialNB
@@ -54,6 +55,62 @@ def build_confusion_matrix(nb, test_docs, test_cats):
     return m
 
 ### MODEL INTERPRETATION
+@functools.lru_cache()
+def find_characteristic_cluster_words(nb, docs, class_n, n_words=10, how='log_ratio'):
+    indices = find_n_characteristic_indices(nb, docs, n_words)
+
+# functions for odds-ratio of fitted model
+@functools.lru_cache()
+def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
+    if how == 'odds_ratio':
+        word_log_prob = construct_word_log_prob(docs)
+        words_metric = get_odds_ratio(nb, word_log_prob)
+    else:
+        words_metric = get_log_ratio
+
+    n_most_extreme = {}
+
+    nclasses = len(nb.classes_)
+    for class_idx in range(nclasses):
+        class_metrics = words_metric[class_idx]
+        metrics_with_indices = list(enumerate(class_metrics))
+        metrics_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
+
+        n_highest_indices = [o[0] for o in metrics_with_indices[-n:]]
+        n_lowest_indices = [o[0] for o in metrics_with_indices[:n]]
+
+        n_most_extreme[class_idx] = (n_highest_indices, n_lowest_indices)
+
+    return n_most_extreme
+
+
+@functools.lru_cache()
+def get_odds_ratio(nb, word_log_probs):
+    nclasses = len(nb.classes_)
+    overall_log_prob_matrix = word_log_probs.repeat(nclasses,axis=0)
+
+    return nb.feature_log_prob_ - overall_log_prob_matrix
+
+
+@functools.lru_cache()
+def get_log_ratio(nb, numerator_row=0):
+    nclasses = len(nb.classes_)
+    denominator_row = [i for i in range(nclasses) if i!=numerator_row][0]
+
+    return nb.feature_log_prob_[numerator_row] - nb.feature_log_prob_[denominator_row]
+
+
+@functools.lru_cache()
+def construct_word_log_prob(docs):
+    docs_count = array(docs.sum(axis=0))
+    docs_total = np.ones(docs_count.shape) * docs.sum()
+
+    docs_log_prob = log(docs_count) - log(docs_total)
+
+    return docs_log_prob
+
+
+@functools.lru_cache()
 def make_reverse_vocabulary(vectorizer):
     revvoc = {}
         
@@ -64,56 +121,3 @@ def make_reverse_vocabulary(vectorizer):
         revvoc[i] = w
     
     return revvoc
-
-# functions for odds-ratio of fitted model
-def find_n_most_extreme_odds_ratios(nb, word_log_prob, n=10, numerator_row=0):
-    odds_ratio = get_odds_ratio(nb, word_log_prob)
-
-    n_most_extreme = {}
-
-    nclasses = len(nb.classes_)
-    for class_idx in range(nclasses):
-        class_odds = odds_ratio[class_idx]
-        odds_with_indices = list(enumerate(class_odds))
-        odds_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
-
-        n_highest_indices = [o[0] for o in odds_with_indices[-n:]]
-        n_lowest_indices = [o[0] for o in odds_with_indices[:n]]
-
-        n_most_extreme[class_idx] = (n_highest_indices, n_lowest_indices)
-
-    return n_most_extreme
-
-
-def get_odds_ratio(nb, word_log_probs):
-    nclasses = len(nb.classes_)
-    overall_log_prob_matrix = word_log_probs.repeat(nclasses,axis=0)
-
-    return nb.feature_log_prob_ - overall_log_prob_matrix
-
-def find_n_most_extreme_fratios(nb, n=10, numerator_row=0):
-    fratio = get_fratio(nb, numerator_row)
-
-    class_odds = fratio
-    odds_with_indices = list(enumerate(class_odds))
-    odds_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
-
-    n_highest_indices = [o[0] for o in odds_with_indices[-n:]]
-    n_lowest_indices = [o[0] for o in odds_with_indices[:n]]
-
-    return n_highest_indices, n_lowest_indices
-
-
-def get_fratio(nb, numerator_row=0):
-    nclasses = len(nb.classes_)
-    denominator_row = [i for i in range(nclasses) if i!=numerator_row][0]
-
-    return nb.feature_log_prob_[numerator_row] - nb.feature_log_prob_[denominator_row]
-
-def construct_word_log_prob(docs):
-    docs_count = array(docs.sum(axis=0))
-    docs_total = np.ones(docs_count.shape) * docs.sum()
-
-    docs_log_prob = log(docs_count) - log(docs_total)
-
-    return docs_log_prob

@@ -1,4 +1,3 @@
-import random
 import numpy as np
 from numpy import log, ceil, sum
 from sklearn.naive_bayes import MultinomialNB
