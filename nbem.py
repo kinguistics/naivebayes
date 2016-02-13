@@ -3,15 +3,17 @@ from numpy import log, ceil, sum
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.utils.extmath import logsumexp
 
+
 ### helper functions for EM
-def generate_normed_rand_log_prob(vecshape, count_vec=None, max_alpha=10):
+def generate_normed_rand_log_prob(vecshape, count_vec=None, expansion_factor=10):
     if count_vec is None:
         rand_prob = np.random.random(vecshape)
     else:
-        rand_to_add = ceil(np.random.random(vecshape) * max_alpha)
+        rand_to_add = ceil(np.random.random(vecshape) * expansion_factor)
         rand_prob = count_vec + rand_to_add
     rand_log_prob = log(rand_prob)
 
+    # CAREFUL -- might not always be max here!!!
     norm_axis = vecshape.index(max(vecshape))
     log_norm = logsumexp(rand_log_prob, norm_axis)
     log_norm_vec = np.resize(log_norm, vecshape)
@@ -69,6 +71,8 @@ class NaiveBayesEM(object):
         self.max_iterations = max_iterations
         self.randomize = randomize
         self.kwargs = kwargs
+        
+        self.model = None
 
         # some shapes and sizes for easy access later
         self.n_samples, self.n_features = self.documents.shape
@@ -80,17 +84,34 @@ class NaiveBayesEM(object):
         self.feature_log_probs = []
 
         # when/how to stop the EM iterations
-        self.likelihood = []
+        self.likelihoods = []
+
+    def _set_params(self, class_log_prior, feature_log_prob):
+        self.class_log_priors.append(class_log_prior)
+        self.feature_log_probs.append(feature_log_prob)
+    
+    def _get_nb_params(self, nb):
+        class_log_prior = nb.class_log_prior_
+        feature_log_prob = nb.feature_log_prob_
+        
+        params = {'class_log_prior' : class_log_prior,
+                  'feature_log_prob' : feature_log_prob}
+        return params
 
     def runEM(self):
         ''' initializes, then iteratively runs, the EM algorithm to cluster
             self.documents in self.n_category different classes '''
-        self.initializeEM(self.randomize)
+        if self.model is None:
+            params = self.initializeEM(self.randomize)
+            self._set_params(**params)
+        else:
+            params = self._get_nb_params(self.model)
+            self._set_params(**params)
 
         for iter_n in range(self.max_iterations):
             done = False
 
-            try: prev_likelihood = self.likelihood[-1]
+            try: prev_likelihood = self.likelihoods[-1]
             except IndexError: prev_likelihood = None
 
             nb = MultinomialNB(**self.kwargs)
@@ -103,15 +124,15 @@ class NaiveBayesEM(object):
             soft_predictions = self.e_step(nb)
             nb = self.m_step(soft_predictions)
 
-            self.last_nb = nb
+            self.model = nb
 
             ### CHECK LIKELIHOOD CHANGE
             jll = nb._joint_log_likelihood(self.documents)
-            best_likelihoods = jll.max(axis=1)
-            this_likelihood = sum(best_likelihoods)
+            ll_by_class = logsumexp(jll,axis=1)
+            ll = sum(ll_by_class)
 
-            self.likelihood.append(this_likelihood)
-            if this_likelihood == prev_likelihood:
+            self.likelihoods.append(ll)
+            if ll == prev_likelihood:
                 done = True
                 pass
 
@@ -120,24 +141,25 @@ class NaiveBayesEM(object):
             if done:
                 break
 
-    def initializeEM(self, randomize=False):
+    def initializeEM(self, randomize=False, class_expansion=0, feature_expansion=10):
         if randomize:
-            class_log_prior_ = generate_normed_rand_log_prob(self.class_log_prior_shape)
-            feature_log_prob_ = generate_normed_rand_log_prob(self.feature_log_prob_shape)
+            class_log_prior = generate_normed_rand_log_prob(self.class_log_prior_shape)
+            feature_log_prob = generate_normed_rand_log_prob(self.feature_log_prob_shape)
 
         else:
             uniform_class_counts = np.ones(self.class_log_prior_shape)
-            class_log_prior_ = generate_normed_rand_log_prob(self.class_log_prior_shape,
+            class_log_prior = generate_normed_rand_log_prob(self.class_log_prior_shape,
                                                              count_vec=uniform_class_counts,
-                                                             max_alpha=0)
+                                                             expansion_factor=class_expansion)
 
             doc_vec_counts = np.resize(self.documents.sum(0), self.feature_log_prob_shape)
-            feature_log_prob_ = generate_normed_rand_log_prob(self.feature_log_prob_shape,
+            feature_log_prob = generate_normed_rand_log_prob(self.feature_log_prob_shape,
                                                               count_vec=doc_vec_counts,
-                                                              max_alpha=10)
+                                                              expansion_factor=feature_expansion)
 
-        self.class_log_priors.append(class_log_prior_)
-        self.feature_log_probs.append(feature_log_prob_)
+        params = {'class_log_prior' : class_log_prior,
+                  'feature_log_prob' : feature_log_prob}
+        return params
 
     def e_step(self, nb):
         nb.class_log_prior_ = self.class_log_priors[-1]
