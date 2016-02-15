@@ -148,6 +148,8 @@ if __name__ == '__main__':
 
             all_sizes[hl_pair] = size
 
+            nb.fit(low_freq_removed, cats)
+
             ### TODO: want to cv this as well???
             ###     figure out the summary stat
             ll = log_likelihood(nb, low_freq_removed)

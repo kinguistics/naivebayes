@@ -46,9 +46,15 @@ def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
 
         highest_val_in_list = metrics_with_indices[-1][1]
         i = len(metrics_with_indices)-1
-        while metrics_with_indices[i][1] == highest_val_in_list:
-            i -=1
-        n_highest_indices = metrics_with_indices[i:]
+
+        while True:
+            try: next_item = metrics_with_indices[i][1]
+            except IndexError: break
+            if next_item == highest_val_in_list:
+                i -=1
+            else:
+                break
+        n_highest_indices = metrics_with_indices[i+1:]
         '''
         n_lowest_indices = [o for o in metrics_with_indices[:n]]
 
