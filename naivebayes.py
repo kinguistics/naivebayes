@@ -13,15 +13,22 @@ from brown_testing import *
 def find_characteristic_class_words(nb, docs, vectorizer, class_n, n_words=10, how='log_ratio'):
     indices = find_n_characteristic_indices(nb, docs, n_words, how)
     class_indices = indices[class_n]
-    
+
     # SHOULD be sorted
     class_indices.reverse()
-    
+
     revvoc = make_reverse_vocabulary(vectorizer)
     words = [(revvoc[n], metric) for (n,metric) in class_indices]
     return words
 
+def find_all_characteristic_classes_words(nb, docs, vectorizer, n_words, how='log_ratio'):
+    indices = find_n_characteristic_indices(nb, docs, n_words, how)
+
+
+
 # functions for odds-ratio of fitted model
+## TODO: make "how" take a function
+## TODO: fix this; it currently doesn't use n at all
 def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
     if how == 'odds_ratio':
         word_log_prob = construct_word_log_prob(docs)
@@ -77,11 +84,11 @@ def construct_word_log_prob(docs):
 
 def make_reverse_vocabulary(vectorizer):
     revvoc = {}
-        
+
     vocab = vectorizer.vocabulary_
     for w in vocab:
         i = vocab[w]
-        
+
         revvoc[i] = w
-    
+
     return revvoc
