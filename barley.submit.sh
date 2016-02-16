@@ -18,5 +18,21 @@
 
 ## the "meat" of the script
 
-#just print the name of this machine
-python test_high_low_freq_words.py $*
+# set ticket and get a token
+kinit
+aklog
+tokens
+
+# start the script and grab its pid
+python test_high_low_freq_words.py $* &
+pid=$!
+
+# poll the pid every 12 hours, and renew the ticket/token if it's still running
+while ps -p $pid >/dev/null
+do
+    sleep 12h
+    kinit
+    aklog
+    tokens
+done
+
