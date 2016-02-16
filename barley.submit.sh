@@ -19,4 +19,4 @@
 ## the "meat" of the script
 
 #just print the name of this machine
-python brown_testing.py $*
+python test_high_low_freq_words.py $*

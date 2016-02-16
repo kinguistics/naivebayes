@@ -17,6 +17,7 @@ import pandas
 
 MAXN_HIGH = None
 MAXN_LOW = None
+N_CROSSVAL_SHUFFLES = 100
 ALPHA_OPTMZN_RESOLUTION = 100
 
 def remove_one_frequency(docs, fn=min):
@@ -73,103 +74,78 @@ def log_likelihood(nb, docs):
     return ll
 
 if __name__ == '__main__':
-    all_d, all_c = build_all_brown()
+    with open('hl_freq_tests.csv','w') as fout:
+        fwriter = csv.writer(fout)
+        header = ['high_idx','low_idx','lowest_freq','highest_freq','ncols','score']
+        fwriter.writerow(header)
 
-    vec = CountVectorizer()
-    docs = vec.fit_transform(all_d)
+        all_d, all_c = build_all_brown()
 
-    nwords = docs.shape[1]
+        vec = CountVectorizer()
+        docs = vec.fit_transform(all_d)
 
-    enc = LabelEncoder()
-    cats = enc.fit_transform(all_c)
+        nwords = docs.shape[1]
 
-    nb = MultinomialNB()
+        enc = LabelEncoder()
+        cats = enc.fit_transform(all_c)
 
-    all_scores = {}
-    all_sizes = {}
-    all_minmax = {}
-    all_alphas = {}
-    all_loglikes = {}
-    all_mean_extremes = {}
-    all_median_extremes = {}
+        high_freq_removed = docs#.transpose()[array(range(20))].transpose()
 
+        if MAXN_HIGH is None:
+            n_high = nwords
+        else:
+            n_high = MAXN_HIGH
+        if MAXN_LOW is None:
+            n_low = nwords
+        else:
+            n_low = MAXN_LOW
 
-    high_freq_removed = docs #.transpose()[array(range(100))].transpose()
+        for high_freq_removed_n in range(n_high):
 
-    if MAXN_HIGH is None:
-        n_high = nwords
-    else:
-        n_high = MAXN_HIGH
-    if MAXN_LOW is None:
-        n_low = nwords
-    else:
-        n_low = MAXN_LOW
+            if high_freq_removed_n > 0:
+                high_freq_removed = remove_one_frequency(high_freq_removed, max)
 
-    for high_freq_removed_n in range(n_high):
-
-        if high_freq_removed_n > 0:
-            high_freq_removed = remove_one_frequency(high_freq_removed, max)
-
-        high_size = high_freq_removed.shape[1]
-        if high_size == 0:
-            break
-
-        low_freq_removed = high_freq_removed
-
-        for low_freq_removed_n in range(n_low):
-            hl_pair = (high_freq_removed_n, low_freq_removed_n)
-
-            if low_freq_removed_n > 0:
-                low_freq_removed = remove_one_frequency(low_freq_removed, min)
-
-            # we're done here if we've emptied the docs
-            size = low_freq_removed.shape[1]
-
-            if size == 0:
+            high_size = high_freq_removed.shape[1]
+            if high_size == 0:
                 break
 
-            # ready to test
-            '''
-            score = cv.cross_val_score(nb, low_freq_removed, cats, cv=10)
-            '''
+            low_freq_removed = high_freq_removed
 
-            counts = low_freq_removed.sum(axis=0)
-            minmax = (counts.min(), counts.max())
-            all_minmax[hl_pair] = minmax
+            for low_freq_removed_n in range(n_low):
+                hl_pair = (high_freq_removed_n, low_freq_removed_n)
 
-            # need to optimize alpha for this size
-            x_train, x_dev, x_test, y_train, y_dev, y_test = \
-                    train_dev_test_split(low_freq_removed, cats)
-            #best_alpha = optimize_alpha(x_train, x_dev, y_train, y_dev)
-            best_alpha = 0.2
+                if low_freq_removed_n > 0:
+                    low_freq_removed = remove_one_frequency(low_freq_removed, min)
 
-            nb = MultinomialNB(alpha=best_alpha)
-            nb.fit(x_train, y_train)
-            score = nb.score(x_test, y_test)
+                # we're done here if we've emptied the docs
+                size = low_freq_removed.shape[1]
 
+                if size == 0:
+                    break
 
-            all_scores[hl_pair] = mean(score)
+                # ready to test
+                for i in range(N_CROSSVAL_SHUFFLES):
+                    x_train, x_test, y_train, y_test = cv.train_test_split(docs, cats, train_size=0.9)
 
-            all_sizes[hl_pair] = size
-
-            nb.fit(low_freq_removed, cats)
-
-            ### TODO: want to cv this as well???
-            ###     figure out the summary stat
-            ll = log_likelihood(nb, low_freq_removed)
-            all_loglikes[hl_pair] = ll
-
-            n_most_extreme = find_n_characteristic_indices(nb, low_freq_removed, how='odds_ratio')
-            mean_nme = mean([len(v) for v in n_most_extreme.values()])
-            all_mean_extremes[hl_pair] = mean_nme
-            median_nme = median([len(v) for v in n_most_extreme.values()])
-            all_median_extremes[hl_pair] = median_nme
-
-            print hl_pair, size, minmax, score, mean_nme, median_nme, ll
+                    nb = MultinomialNB(alpha=0.2)
+                    nb.fit(x_train, y_train)
+                    score = nb.score(x_test, y_test)
+                    #score = cv.cross_val_score(nb, low_freq_removed, cats, cv=10)
 
 
-            #all_alphas[hl_pair] = best_alpha
+                    counts = low_freq_removed.sum(axis=0)
+                    minmax = (counts.min(), counts.max())
 
+                    header = ['high_idx','low_idx','lowest_freq','highest_freq','ncols','score']
+
+                    rowout = [high_freq_removed_n, low_freq_removed_n,
+                            minmax[0], minmax[1],
+                            size, score]
+                    fwriter.writerow(rowout)
+
+                    print hl_pair, size, minmax, score
+
+'''
     with open('hl_freq_tests.csv','w') as fout:
         fwriter = csv.writer(fout)
         #header = ['high_idx','low_idx','lowest_freq','highest_freq','alpha','ncols','score']
@@ -190,26 +166,4 @@ if __name__ == '__main__':
 
             rowout = [h_idx, l_idx, h_freq, l_freq, ncols, score, mean_nme, median_nme, loglike]
             fwriter.writerow(rowout)
-
-    '''
-    HOLD ON TO THIS FOR IPYTHON BUT DON'T DO IN NON-INTERACTIVE MODE
-
-    df = pandas.DataFrame.from_csv('hl_freq_tests.csv', index_col=None)
-    max_hcut = max(df['high_idx'])
-    max_lcut = max(df['low_idx'])
-    hl_scores = np.zeros((max_hcut+1, max_lcut+1))
-
-    for row_idx in range(len(df['score'])):
-        h_idx = df['high_idx'][row_idx]
-        l_idx = df['low_idx'][row_idx]
-        score = df['score'][row_idx]
-        hl_scores[h_idx][l_idx] = score
-
-    fig, ax = plt.subplots()
-    ax.set_xscale('log')
-    ax.plot(df['lowest_freq'], df['score'],'o')
-    plt.show()
-    #heatmap = ax.pcolor(hl_scores, cmap=plt.cm.Blues)
-    #ax.set_yticks(np.arange(alphameans_matrix.shape[1])+0.5, minor=False)
-    #ax.set_yticklabels(all_alpha, minor=False)
-    '''
+'''
