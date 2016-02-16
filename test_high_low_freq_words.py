@@ -98,8 +98,12 @@ if __name__ == '__main__':
 
     if MAXN_HIGH is None:
         n_high = nwords
+    else:
+        n_high = MAXN_HIGH
     if MAXN_LOW is None:
         n_low = nwords
+    else:
+        n_low = MAXN_LOW
 
     for high_freq_removed_n in range(n_high):
 
@@ -180,9 +184,9 @@ if __name__ == '__main__':
             #alpha = all_alphas[pair]
             ncols = all_sizes[pair]
             score = all_scores[pair]
-            mean_nme = all_mean_extremes[hl_pair]
-            median_nme = all_median_extremes[hl_pair]
-            loglike = all_loglikes[hl_pair]
+            mean_nme = all_mean_extremes[pair]
+            median_nme = all_median_extremes[pair]
+            loglike = all_loglikes[pair]
 
             rowout = [h_idx, l_idx, h_freq, l_freq, ncols, score, mean_nme, median_nme, loglike]
             fwriter.writerow(rowout)
