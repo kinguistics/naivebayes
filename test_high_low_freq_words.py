@@ -19,6 +19,7 @@ MAXN_HIGH = None
 MAXN_LOW = None
 N_CROSSVAL_SHUFFLES = 100
 ALPHA_OPTMZN_RESOLUTION = 100
+ALPHA = 0.2
 
 def remove_one_frequency(docs, fn=min):
     counts_m = docs.sum(axis=0)
@@ -141,7 +142,7 @@ if __name__ == '__main__':
                 for i in range(N_CROSSVAL_SHUFFLES):
                     x_train, x_test, y_train, y_test = cv.train_test_split(docs, cats, train_size=0.9)
 
-                    nb = MultinomialNB(alpha=0.2)
+                    nb = MultinomialNB(alpha=ALPHA)
                     nb.fit(x_train, y_train)
                     score = nb.score(x_test, y_test)
                     #score = cv.cross_val_score(nb, low_freq_removed, cats, cv=10)
@@ -149,7 +150,7 @@ if __name__ == '__main__':
                     counts = low_freq_removed.sum(axis=0)
                     minmax = (counts.min(), counts.max())
 
-                    nme = find_n_characteristic_indices(nb, x_train, how='odds_ratio')
+                    nme = find_n_characteristic_indices(nb, x_train, how='odds_ratio', alpha=ALPHA)
                     mean_nme = mean([len(v) for v in nme.values()])
                     median_nme = median([len(v) for v in nme.values()])
 

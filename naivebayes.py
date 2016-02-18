@@ -29,9 +29,9 @@ def find_all_characteristic_classes_words(nb, docs, vectorizer, n_words, how='lo
 # functions for odds-ratio of fitted model
 ## TODO: make "how" take a function
 ## TODO: fix this; it currently doesn't use n at all
-def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
+def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio', alpha=1.0):
     if how == 'odds_ratio':
-        word_log_prob = construct_word_log_prob(docs)
+        word_log_prob = construct_word_log_prob(docs, alpha)
         words_metric = get_odds_ratio(nb, word_log_prob)
     else:
         words_metric = get_log_ratio(nb)
@@ -42,8 +42,14 @@ def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
     for class_idx in range(nclasses):
         class_metrics = words_metric[class_idx]
         metrics_with_indices = list(enumerate(class_metrics))
+        
+        highest_metric = max([v[1] for v in metrics_with_indices])
+        n_most_extreme[class_idx] = [v for v in metrics_with_indices if v[1] == highest_metric]
+
+        '''
         metrics_with_indices.sort(cmp=lambda x,y: cmp(x[1],y[1]))
 
+        
         highest_val_in_list = metrics_with_indices[-1][1]
         i = len(metrics_with_indices)-1
 
@@ -55,13 +61,14 @@ def find_n_characteristic_indices(nb, docs, n=10, how='log_ratio'):
             else:
                 break
         n_highest_indices = metrics_with_indices[i+1:]
-        '''
+        
         n_lowest_indices = [o for o in metrics_with_indices[:n]]
 
         n_most_extreme[class_idx] = (n_highest_indices, n_lowest_indices)
-        '''
+        
         n_most_extreme[class_idx] = n_highest_indices
-
+        '''
+        
     return n_most_extreme
 
 
@@ -79,9 +86,9 @@ def get_log_ratio(nb, numerator_row=0):
     return nb.feature_log_prob_[numerator_row] - nb.feature_log_prob_[denominator_row]
 
 
-def construct_word_log_prob(docs):
-    docs_count = array(docs.sum(axis=0))
-    docs_total = np.ones(docs_count.shape) * docs.sum()
+def construct_word_log_prob(docs, alpha=1.0):
+    docs_count = array(docs.sum(axis=0)) + alpha
+    docs_total = np.ones(docs_count.shape) * docs_count.sum()
 
     docs_log_prob = log(docs_count) - log(docs_total)
 
