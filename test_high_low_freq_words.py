@@ -116,7 +116,10 @@ if __name__ == '__main__':
             if high_freq_removed_n > 0:
                 high_freq_removed = remove_one_frequency(high_freq_removed, max)
 
-            high_size = high_freq_removed.shape[1]
+            if high_freq_removed is None:
+                high_size = 0
+            else:
+                high_size = high_freq_removed.shape[1]
             if high_size == 0:
                 break
 
