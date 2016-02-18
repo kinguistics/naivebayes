@@ -150,8 +150,8 @@ if __name__ == '__main__':
                     minmax = (counts.min(), counts.max())
 
                     nme = find_n_characteristic_indices(nb, x_train, how='odds_ratio')
-                    mean_nme = mean([len(v) for v in nme.values()])
-                    median_nme = median([len(v) for v in nme.values()])
+                    mean_nme = mean(nme.values())
+                    median_nme = median(nme.values())
 
                     ll = log_likelihood(nb, x_train)
 
