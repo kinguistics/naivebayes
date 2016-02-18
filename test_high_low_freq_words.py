@@ -82,7 +82,11 @@ def log_likelihood(nb, docs):
 if __name__ == '__main__':
     with open('hl_freq_tests.csv','w') as fout:
         fwriter = csv.writer(fout)
-        header = ['high_idx','low_idx','lowest_freq','highest_freq','ncols','score']
+        header = ['high_idx','low_idx',
+                  'lowest_freq','highest_freq',
+                  'ncols','score',
+                  'mean_n_characteristic','median_n_characteristic',
+                  'loglikelihood']
         fwriter.writerow(header)
 
         all_d, all_c = build_all_brown()
@@ -142,15 +146,20 @@ if __name__ == '__main__':
                     score = nb.score(x_test, y_test)
                     #score = cv.cross_val_score(nb, low_freq_removed, cats, cv=10)
 
-
                     counts = low_freq_removed.sum(axis=0)
                     minmax = (counts.min(), counts.max())
 
-                    header = ['high_idx','low_idx','lowest_freq','highest_freq','ncols','score']
+                    nme = find_n_characteristic_indices(nb, x_train, how='odds_ratio')
+                    mean_nme = mean(nme.values())
+                    median_nme = median(nme.values())
+
+                    ll = log_likelihood(nb, x_train)
 
                     rowout = [high_freq_removed_n, low_freq_removed_n,
-                            minmax[0], minmax[1],
-                            size, score]
+                              minmax[0], minmax[1],
+                              size, score,
+                              mean_nme, median_nme,
+                              ll]
                     fwriter.writerow(rowout)
 
                     print hl_pair, size, minmax, score
