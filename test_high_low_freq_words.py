@@ -33,7 +33,13 @@ def remove_one_frequency(docs, fn=min):
     indices_to_keep = array([i for i in range(docs.shape[1]) if i not in indices_to_remove])
 
     # COLUMNS
-    return docs.transpose()[indices_to_keep].transpose()
+    try:
+        docs_out = docs.transpose()[indices_to_keep].transpose()
+    except ValueError:
+        # some versions of scipy don't allow reshaping to 0
+        docs_out = None
+
+    return docs_out
 
 def optimize_alpha(x_train, x_dev, y_train, y_dev, min_a=0, max_a=10):
     asize = ALPHA_OPTMZN_RESOLUTION
@@ -89,7 +95,7 @@ if __name__ == '__main__':
         enc = LabelEncoder()
         cats = enc.fit_transform(all_c)
 
-        high_freq_removed = docs#.transpose()[array(range(20))].transpose()
+        high_freq_removed = docs.transpose()[array(range(20))].transpose()
 
         if MAXN_HIGH is None:
             n_high = nwords
@@ -118,7 +124,11 @@ if __name__ == '__main__':
                     low_freq_removed = remove_one_frequency(low_freq_removed, min)
 
                 # we're done here if we've emptied the docs
-                size = low_freq_removed.shape[1]
+                if low_freq_removed is None:
+                    # then we had to kill it because of the scipy error
+                    size = 0
+                else:
+                    size = low_freq_removed.shape[1]
 
                 if size == 0:
                     break
@@ -144,6 +154,9 @@ if __name__ == '__main__':
                     fwriter.writerow(rowout)
 
                     print hl_pair, size, minmax, score
+
+                # flush to output file so we can keep an eye on this on corn
+                fout.flush()
 
 '''
     with open('hl_freq_tests.csv','w') as fout:

@@ -31,6 +31,8 @@ def build_all_brown(subset_size=None):
             documents = documents[:-1]
             categories = categories[:-1]
 
+        documents = [' '.join(d) for d in documents]
+
     except LookupError:
         ''' we don't have the Brown corpus via nltk on this machine '''
         try:
