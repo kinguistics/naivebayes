@@ -24,4 +24,14 @@ aklog
 tokens
 
 # start the script and grab its pid
-python test_high_low_freq_words.py $*
+python test_high_low_freq_words.py $* &
+pid=$!
+
+# poll the pid every 24 hours, and renew the ticket/token if it's still running
+while ps -p $pid >/dev/null
+do
+    sleep 24h
+    kinit
+    aklog
+    tokens
+done
