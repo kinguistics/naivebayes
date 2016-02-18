@@ -39,7 +39,7 @@ def build_all_brown(subset_size=None):
         except IOError:
             raise Exception("can't load Brown Corpus via NLTK or file")
 
-    #documents = [' '.join(d) for d in documents]
+    documents = [' '.join(d) for d in documents]
 
     '''
     # let's NOT get tempted to hide away the encoding
