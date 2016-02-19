@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import log, ceil, sum
+from numpy import log, ceil, sum, inf
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.utils.extmath import logsumexp
 
@@ -112,7 +112,7 @@ class NaiveBayesEM(object):
             done = False
 
             try: prev_likelihood = self.likelihoods[-1]
-            except IndexError: prev_likelihood = None
+            except IndexError: prev_likelihood = -inf
             print "EM iteration %s of %s" % (iter_n, self.max_iterations), prev_likelihood
 
             nb = MultinomialNB(**self.kwargs)
