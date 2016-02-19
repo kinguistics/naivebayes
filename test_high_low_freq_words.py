@@ -17,7 +17,7 @@ import pandas
 
 MAXN_HIGH = None
 MAXN_LOW = None
-N_CROSSVAL_SHUFFLES = 1
+N_CROSSVAL_SHUFFLES = 100
 ALPHA_OPTMZN_RESOLUTION = 100
 ALPHA = 0.2
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         enc = LabelEncoder()
         cats = enc.fit_transform(all_c)
 
-        high_freq_removed = docs.transpose()[array(range(20))].transpose()
+        high_freq_removed = docs#.transpose()[array(range(20))].transpose()
 
         if MAXN_HIGH is None:
             n_high = nwords
@@ -168,8 +168,8 @@ if __name__ == '__main__':
 
                     print hl_pair, size, minmax, "iteration %s: " % i, score
 
-                # flush to output file so we can keep an eye on this on corn
-                fout.flush()
+                    # flush to output file so we can keep an eye on this on corn
+                    fout.flush()
 
 '''
     with open('hl_freq_tests.csv','w') as fout:
