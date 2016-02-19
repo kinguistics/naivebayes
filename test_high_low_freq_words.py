@@ -21,6 +21,8 @@ N_CROSSVAL_SHUFFLES = 100
 ALPHA_OPTMZN_RESOLUTION = 100
 ALPHA = 0.2
 
+FNAME_OUT = 'hl_freq_tests.csv'
+
 def remove_one_frequency(docs, fn=min):
     counts_m = docs.sum(axis=0)
 
@@ -81,7 +83,7 @@ def log_likelihood(nb, docs):
     return ll
 
 if __name__ == '__main__':
-    with open('hl_freq_tests.csv','w') as fout:
+    with open(FNAME_OUT,'w') as fout:
         fwriter = csv.writer(fout)
         header = ['high_idx','low_idx',
                   'lowest_freq','highest_freq',
@@ -90,58 +92,61 @@ if __name__ == '__main__':
                   'loglikelihood']
         fwriter.writerow(header)
 
-        all_d, all_c = build_all_brown()
+    all_d, all_c = build_all_brown()
 
-        vec = CountVectorizer()
-        docs = vec.fit_transform(all_d)
+    vec = CountVectorizer()
+    docs = vec.fit_transform(all_d)
 
-        nwords = docs.shape[1]
+    nwords = docs.shape[1]
 
-        enc = LabelEncoder()
-        cats = enc.fit_transform(all_c)
+    enc = LabelEncoder()
+    cats = enc.fit_transform(all_c)
 
-        high_freq_removed = docs#.transpose()[array(range(20))].transpose()
+    high_freq_removed = docs#.transpose()[array(range(20))].transpose()
 
-        if MAXN_HIGH is None:
-            n_high = nwords
+    if MAXN_HIGH is None:
+        n_high = nwords
+    else:
+        n_high = MAXN_HIGH
+    if MAXN_LOW is None:
+        n_low = nwords
+    else:
+        n_low = MAXN_LOW
+
+    for high_freq_removed_n in range(n_high):
+
+        if high_freq_removed_n > 0:
+            high_freq_removed = remove_one_frequency(high_freq_removed, max)
+
+        if high_freq_removed is None:
+            high_size = 0
         else:
-            n_high = MAXN_HIGH
-        if MAXN_LOW is None:
-            n_low = nwords
-        else:
-            n_low = MAXN_LOW
+            high_size = high_freq_removed.shape[1]
+        if high_size == 0:
+            break
 
-        for high_freq_removed_n in range(n_high):
+        low_freq_removed = high_freq_removed
 
-            if high_freq_removed_n > 0:
-                high_freq_removed = remove_one_frequency(high_freq_removed, max)
+        for low_freq_removed_n in range(n_low):
+            hl_pair = (high_freq_removed_n, low_freq_removed_n)
 
-            if high_freq_removed is None:
-                high_size = 0
+            if low_freq_removed_n > 0:
+                low_freq_removed = remove_one_frequency(low_freq_removed, min)
+
+            # we're done here if we've emptied the docs
+            if low_freq_removed is None:
+                # then we had to kill it because of the scipy error
+                size = 0
             else:
-                high_size = high_freq_removed.shape[1]
-            if high_size == 0:
+                size = low_freq_removed.shape[1]
+
+            if size == 0:
                 break
 
-            low_freq_removed = high_freq_removed
+            # ready to test
+            with open(FNAME_OUT,'a') as fout:
+                fwriter = csv.writer(fout)
 
-            for low_freq_removed_n in range(n_low):
-                hl_pair = (high_freq_removed_n, low_freq_removed_n)
-
-                if low_freq_removed_n > 0:
-                    low_freq_removed = remove_one_frequency(low_freq_removed, min)
-
-                # we're done here if we've emptied the docs
-                if low_freq_removed is None:
-                    # then we had to kill it because of the scipy error
-                    size = 0
-                else:
-                    size = low_freq_removed.shape[1]
-
-                if size == 0:
-                    break
-
-                # ready to test
                 for i in range(N_CROSSVAL_SHUFFLES):
                     x_train, x_test, y_train, y_test = cv.train_test_split(docs, cats, train_size=0.9)
 
@@ -160,16 +165,16 @@ if __name__ == '__main__':
                     ll = log_likelihood(nb, x_train)
 
                     rowout = [high_freq_removed_n, low_freq_removed_n,
-                              minmax[0], minmax[1],
-                              size, score,
-                              mean_nme, median_nme,
-                              ll]
+                                minmax[0], minmax[1],
+                                size, score,
+                                mean_nme, median_nme,
+                                ll]
                     fwriter.writerow(rowout)
 
                     print hl_pair, size, minmax, "iteration %s: " % i, score
 
                     # flush to output file so we can keep an eye on this on corn
-                    fout.flush()
+                    #fout.flush()
 
 '''
     with open('hl_freq_tests.csv','w') as fout:
