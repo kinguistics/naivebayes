@@ -137,7 +137,7 @@ class NaiveBayesEM(object):
                 done = True
                 pass
 
-            #print iter_n, this_likelihood #, nb.count_classifications()
+            print iter_n, ll, ll - prev_likelihood #, nb.count_classifications()
             #print iter_n, this_likelihood, count_live_classes(nb)
             if done:
                 break
