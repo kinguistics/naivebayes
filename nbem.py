@@ -71,7 +71,7 @@ class NaiveBayesEM(object):
         self.max_iterations = max_iterations
         self.randomize = randomize
         self.kwargs = kwargs
-        
+
         self.model = None
 
         # some shapes and sizes for easy access later
@@ -89,11 +89,11 @@ class NaiveBayesEM(object):
     def _set_params(self, class_log_prior, feature_log_prob):
         self.class_log_priors.append(class_log_prior)
         self.feature_log_probs.append(feature_log_prob)
-    
+
     def _get_nb_params(self, nb):
         class_log_prior = nb.class_log_prior_
         feature_log_prob = nb.feature_log_prob_
-        
+
         params = {'class_log_prior' : class_log_prior,
                   'feature_log_prob' : feature_log_prob}
         return params
@@ -109,6 +109,7 @@ class NaiveBayesEM(object):
             self._set_params(**params)
 
         for iter_n in range(self.max_iterations):
+            print "EM iteration %s of %s" % (iter_n, self.max_iterations)
             done = False
 
             try: prev_likelihood = self.likelihoods[-1]

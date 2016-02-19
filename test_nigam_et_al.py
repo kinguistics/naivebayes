@@ -1,5 +1,6 @@
 import rfc822
 import os
+import csv
 from numpy import random
 
 from sklearn.naive_bayes import MultinomialNB
@@ -165,31 +166,41 @@ if __name__ == '__main__':
     test_x, test_y = convert_docdict_to_array(test_docdict, vec, enc)
     unlabeled_x, unlabeled_y = convert_docdict_to_array(unlabeled_docdict, vec, enc)
 
-    for labeled_size_experiment in LABELED_SIZES:
-        print "testing size =", labeled_size_experiment
+    with open('nigam_et_al_repl.csv','w') as fout:
+        fwriter = csv.writer(fout)
+        headerout = ['n.labeled','iteration','no.em','with.em']
+        fwriter.writerow(headerout)
+        for labeled_size_experiment in LABELED_SIZES:
+            print "testing size =", labeled_size_experiment
 
-        experiment_scores_noem = []
-        experiment_scores_em = []
+            experiment_scores_noem = []
+            experiment_scores_em = []
 
-        labeled_sets = kfold_by_cat(labeled_docdict, labeled_size_experiment)
+            labeled_sets = kfold_by_cat(labeled_docdict, labeled_size_experiment)
 
-        i = 0
-        total = len(labeled_sets)
-        for labeled_set in labeled_sets:
-            print "testing size =", labeled_size_experiment, ", n =", i
-            i += 1
-            labeled_x, labeled_y = convert_docdict_to_array(labeled_set, vec, enc)
+            i = 0
+            total = len(labeled_sets)
+            for labeled_set in labeled_sets:
+                print "testing size =", labeled_size_experiment, ", n =", i
+                i += 1
+                labeled_x, labeled_y = convert_docdict_to_array(labeled_set, vec, enc)
 
-            nb = MultinomialNB(alpha=0.2)
-            nb.fit(labeled_x, labeled_y)
-            noem_score = nb.score(test_x, test_y)
-            experiment_scores_noem.append(noem_score)
+                rowout = [labeled_x.size[0], i]
 
-            em = NaiveBayesEM(unlabeled_x, ncats)
-            em.model = nb
-            em.runEM()
+                nb = MultinomialNB(alpha=0.2)
+                nb.fit(labeled_x, labeled_y)
+                noem_score = nb.score(test_x, test_y)
+                experiment_scores_noem.append(noem_score)
+                rowout.append(noem_score)
 
-            nb_out = em.model
-            em_score = nb_out.score(test_x, test_y)
+                em = NaiveBayesEM(unlabeled_x, ncats)
+                em.model = nb
+                em.runEM()
 
-            experiment_scores_em.append(em_score)
+                nb_out = em.model
+                em_score = nb_out.score(test_x, test_y)
+
+                experiment_scores_em.append(em_score)
+                rowout.append(em_score)
+
+                fwriter.writerow(rowout)
