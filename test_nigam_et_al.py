@@ -15,7 +15,7 @@ NEWSGROUPS_DIRECTORY = '20_newsgroups/'
 TEST_GROUP_SIZE = 0.2
 UNLABELED_GROUP_SIZE = 0.5
 
-LABELED_SIZES = sorted(list(factors(300)))
+LABELED_SIZES = [1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 25, 30, 50, 60, 75, 100, 150, 300]
 
 def load_documents(dirname):
     dir_walker = os.walk(dirname)
