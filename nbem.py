@@ -3,6 +3,7 @@ from numpy import log, ceil, sum, inf
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.utils.extmath import logsumexp
 
+LIKELIHOOD_EPSILON = 0.00001
 
 ### helper functions for EM
 def generate_normed_rand_log_prob(vecshape, count_vec=None, expansion_factor=10):
@@ -133,11 +134,10 @@ class NaiveBayesEM(object):
             ll = sum(ll_by_class)
 
             self.likelihoods.append(ll)
-            if ll == prev_likelihood:
+            if abs(ll - prev_likelihood) < LIKELIHOOD_EPSILON:
                 done = True
-                pass
 
-            print iter_n, ll, ll - prev_likelihood #, nb.count_classifications()
+            #print iter_n, ll, ll - prev_likelihood #, nb.count_classifications()
             #print iter_n, this_likelihood, count_live_classes(nb)
             if done:
                 break

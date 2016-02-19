@@ -202,5 +202,6 @@ if __name__ == '__main__':
 
                 experiment_scores_em.append(em_score)
                 rowout.append(em_score)
+                print rowout
 
                 fwriter.writerow(rowout)
