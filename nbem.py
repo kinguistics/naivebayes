@@ -109,11 +109,11 @@ class NaiveBayesEM(object):
             self._set_params(**params)
 
         for iter_n in range(self.max_iterations):
-            print "EM iteration %s of %s" % (iter_n, self.max_iterations)
             done = False
 
             try: prev_likelihood = self.likelihoods[-1]
             except IndexError: prev_likelihood = None
+            print "EM iteration %s of %s" % (iter_n, self.max_iterations), prev_likelihood
 
             nb = MultinomialNB(**self.kwargs)
             # add faked "classes_" attribute to force it to think it's been trained
