@@ -185,7 +185,7 @@ if __name__ == '__main__':
                 i += 1
                 labeled_x, labeled_y = convert_docdict_to_array(labeled_set, vec, enc)
 
-                rowout = [labeled_x.size[0], i]
+                rowout = [labeled_x.shape[0], i]
 
                 nb = MultinomialNB(alpha=0.2)
                 nb.fit(labeled_x, labeled_y)
