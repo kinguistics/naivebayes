@@ -4,27 +4,34 @@ import csv
 from numpy import random
 
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.preprocessing import LabelEncoder
 
 from nbem import NaiveBayesEM
 
 
 NEWSGROUPS_DIRECTORY = '20_newsgroups/'
-FNAME_OUT = 'nigam_et_al_repl.csv'
+FNAME_OUT = 'nigam_alpha_tests.csv'
 
 # note that group sizes should be interpreted relative to the ENTIRE set
 TEST_GROUP_SIZE = 0.2
 UNLABELED_GROUP_SIZE = 0.5
 
-# note that this was determined empirically, and is more or less equal to
-#   (mean doc length) / (vocab size)
-#   which is specific to the tf vectorizer
-ALPHA = 0.002
+LABELED_SIZES = [15]
 
-LABELED_SIZES = [1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 25, 30, 50, 60, 75, 100, 150, 300]
+TEST_ALPHA_RESOLUTION = 10
+TEST_ALPHA_MAX = 5
 
-MAX_N_UNLABELED_SETS = 10
+def generate_test_alphas(test_alpha_max, test_alpha_resolution):
+    alphas_out = []
+    
+    for i in range(test_alpha_max * test_alpha_resolution):
+        i_normed = float(i) / test_alpha_resolution
+        alpha_i = pow(10, -i_normed)
+        alphas_out.append(alpha_i)
+    
+    return alphas_out
+    
 
 def load_documents(dirname):
     dir_walker = os.walk(dirname)
@@ -147,6 +154,7 @@ def factors(n):
 
 if __name__ == '__main__':
     all_docdict = load_documents(NEWSGROUPS_DIRECTORY)
+    print sum([len(v) for v in all_docdict.values()])
 
     print "all read"
 
@@ -156,7 +164,8 @@ if __name__ == '__main__':
     # vectorizer for words
     # TODO: double check the tokenizer regex on this
     # NOTE: L1 norm to best reflect Nigam et al's 
-    vec = TfidfVectorizer(use_idf=False, min_df=2, norm='l1', stop_words='english')
+    #vec = TfidfVectorizer(use_idf=False, min_df=2, norm='l1', stop_words='english')
+    vec = CountVectorizer(min_df=2, stop_words='english')
     docs_texts = []
     for c in all_docdict:
         for h,m in all_docdict[c]:
@@ -179,47 +188,52 @@ if __name__ == '__main__':
     del test_docdict
     unlabeled_x, unlabeled_y = convert_docdict_to_array(unlabeled_docdict, vec, enc)
     del unlabeled_docdict
+    
+    test_alphas = generate_test_alphas(TEST_ALPHA_MAX, TEST_ALPHA_RESOLUTION)
+    test_alphas = [0.002]
 
 
     with open(FNAME_OUT,'w') as fout:
         fwriter = csv.writer(fout)
-        headerout = ['n.labeled','iteration','no.em','with.em']
+        headerout = ['n.labeled','alpha','iteration','score']#,'with.em']
         fwriter.writerow(headerout)
 
-    for labeled_size_experiment in LABELED_SIZES:
-        print "testing size =", labeled_size_experiment
+        for labeled_size_experiment in LABELED_SIZES:
+            print "testing size =", labeled_size_experiment
+    
+            experiment_scores_noem = []
+            experiment_scores_em = []
+    
+            labeled_sets = kfold_by_cat(labeled_docdict, labeled_size_experiment)
+    
+            for alpha in test_alphas:
+                i = 0
+                total = len(labeled_sets)
+                for labeled_set in labeled_sets:
+                    i += 1
+                    labeled_x, labeled_y = convert_docdict_to_array(labeled_set, vec, enc)
+        
+                    rowout = [labeled_x.shape[0], alpha, i]
+        
+                    nb = MultinomialNB(alpha=alpha)
+                    nb.fit(labeled_x, labeled_y)
+                    noem_score = nb.score(test_x, test_y)
+                    experiment_scores_noem.append(noem_score)
+                    rowout.append(noem_score)
+                    
+                    em = NaiveBayesEM(unlabeled_x, ncats, alpha=alpha, max_iterations=1000, labeled_x=labeled_x, labeled_y=labeled_y)
+                    em.models.append(nb)
+                    em.runEM()
+        
+                    nb_out = em.models[-1]
+                    em_score = nb_out.score(test_x, test_y)
+                    
+                    rowout.append(em_score)
+                    
+                    this_em_iter_scores = []
+                    for model in em.models:
+                        this_em_iter_scores.append(model.score(test_x, test_y))
 
-        experiment_scores_noem = []
-        experiment_scores_em = []
-
-        labeled_sets = kfold_by_cat(labeled_docdict, labeled_size_experiment)
-
-        i = 0
-        total = len(labeled_sets)
-        for labeled_set in labeled_sets[:MAX_N_UNLABELED_SETS]:
-            print "testing size =", labeled_size_experiment, ", n =", i
-            i += 1
-            labeled_x, labeled_y = convert_docdict_to_array(labeled_set, vec, enc)
-
-            rowout = [labeled_x.shape[0], i]
-
-            nb = MultinomialNB(alpha=ALPHA)
-            nb.fit(labeled_x, labeled_y)
-            noem_score = nb.score(test_x, test_y)
-            experiment_scores_noem.append(noem_score)
-            rowout.append(noem_score)
-
-            em = NaiveBayesEM(unlabeled_x, ncats, alpha=ALPHA)
-            em.model = nb
-            em.runEM()
-
-            nb_out = em.model
-            em_score = nb_out.score(test_x, test_y)
-
-            experiment_scores_em.append(em_score)
-            rowout.append(em_score)
-            print rowout
-
-            with open(FNAME_OUT,'a') as fout:
-                fwriter = csv.writer(fout)
-                fwriter.writerow(rowout)
+                    print "size = %s, alpha = %s, score = %s, em_score = %s" % (total, alpha, noem_score, em_score)
+        
+                    fwriter.writerow(rowout)
