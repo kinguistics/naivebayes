@@ -10,7 +10,7 @@ def loglikelihood(nb, docs):
     jll = nb._joint_log_likelihood(docs)
     ll_by_class = logsumexp(jll,axis=1)
     ll = sum(ll_by_class)
-    
+
     return ll
 
 ### helper functions for EM
@@ -83,7 +83,7 @@ class NaiveBayesEM(object):
         self.randomize = randomize
         self.labeled_x = labeled_x
         self.labeled_y = labeled_y
-        
+
         self.kwargs = kwargs
 
         self.models = []
@@ -116,13 +116,17 @@ class NaiveBayesEM(object):
         ''' initializes, then iteratively runs, the EM algorithm to cluster
             self.documents in self.n_category different classes '''
         self.initializeEM(self.randomize)
+        initial_ll = loglikelihood(self.models[-1], self.documents)
+        self.likelihoods.append(initial_ll)
+
+        print "EM initial likelihood: %s" % initial_ll
 
         for iter_n in range(self.max_iterations):
             done = False
 
             try: prev_likelihood = self.likelihoods[-1]
             except IndexError: prev_likelihood = -inf
-            
+
             nb = MultinomialNB(**self.kwargs)
             # add faked "classes_" attribute to force it to think it's been trained
             nb.classes_ = np.ndarray((self.n_categories,))
@@ -130,18 +134,20 @@ class NaiveBayesEM(object):
             nb.class_log_prior_ = self.class_log_priors[-1]
             nb.feature_log_prob_ = self.feature_log_probs[-1]
 
-            ll = loglikelihood(nb, self.documents)            
-            print "EM iteration %s of %s" % (iter_n, self.max_iterations), ll
-
             soft_predictions = self.e_step(nb)
             nb = self.m_step(soft_predictions)
+
+            ### TODO: can speed up by a factor of two if i combine ll calculation and soft prediction
+            ll = loglikelihood(nb, self.documents)
 
             self.models.append(nb)
 
             ### CHECK LIKELIHOOD CHANGE
             self.likelihoods.append(ll)
-            if abs(ll - prev_likelihood) < LIKELIHOOD_EPSILON:
+            if abs(float((ll - prev_likelihood))/prev_likelihood) < LIKELIHOOD_EPSILON:
                 done = True
+
+            print "EM iteration %s of %s" % (iter_n, self.max_iterations), ll
 
             #print iter_n, ll, ll - prev_likelihood #, nb.count_classifications()
             #print iter_n, this_likelihood, count_live_classes(nb)
@@ -152,28 +158,28 @@ class NaiveBayesEM(object):
         if len(self.models):
             model = self.models[-1]
             params = self._get_nb_params(model)
-        
-        else:    
+
+        else:
             if randomize:
                 class_log_prior = generate_normed_rand_log_prob(self.class_log_prior_shape)
                 feature_log_prob = generate_normed_rand_log_prob(self.feature_log_prob_shape)
-    
+
             else:
                 uniform_class_counts = np.ones(self.class_log_prior_shape)
                 class_log_prior = generate_normed_rand_log_prob(self.class_log_prior_shape,
                                                                 count_vec=uniform_class_counts,
                                                                 expansion_factor=class_expansion)
-    
+
                 doc_vec_counts = np.resize(self.documents.sum(0), self.feature_log_prob_shape)
                 feature_log_prob = generate_normed_rand_log_prob(self.feature_log_prob_shape,
                                                                 count_vec=doc_vec_counts,
                                                                 expansion_factor=feature_expansion)
-    
+
             params = {'class_log_prior' : class_log_prior,
                     'feature_log_prob' : feature_log_prob}
-        
+
         self._set_params(**params)
-                
+
 
     def e_step(self, nb):
         #nb.class_log_prior_ = self.class_log_priors[-1]
@@ -187,8 +193,8 @@ class NaiveBayesEM(object):
         nb = MultinomialNB(**self.kwargs)
 
         if (self.labeled_x is not None) and (self.labeled_y is not None):
-            nb.partial_fit(self.labeled_x, 
-                           self.labeled_y, 
+            nb.partial_fit(self.labeled_x,
+                           self.labeled_y,
                            classes=range(self.n_categories))
 
         for category_idx in range(self.n_categories):
